@@ -94,8 +94,30 @@ Message the bot in DMs or @mention it in a channel.
 | `new session` / `reset` | Start fresh conversation |
 | `save memory` | Save session summary to disk |
 | `sessions` | List all active sessions |
+| `brief <project>` | Claude writes a project brief from the conversation |
+| `build <project>` | Build from the brief using the current backend |
+| `review <project>` | Claude reviews the build against the brief |
 | `in ~/path: prompt` | Run in a specific directory |
 | `help` | Show all commands |
+
+### Project Handoff (brief / build / review)
+
+Plan a project with Claude, then hand it off to any backend to build:
+
+```
+You:     "I want a REST API for tracking expenses with auth and categories..."
+Claude:  [discusses architecture, tech stack, etc.]
+You:     brief expense-tracker
+Claude:  [writes ~/projects/expense-tracker/BRIEF.md]
+You:     use codex
+You:     build expense-tracker
+Codex:   [reads BRIEF.md, builds everything]
+You:     use claude
+You:     review expense-tracker
+Claude:  [reviews code against the brief, pass/fail per requirement]
+```
+
+The brief is a plain markdown file — any backend can read it anytime.
 
 ### Session Persistence
 

@@ -61,6 +61,8 @@ MLX_MODELS = {
 current_mlx_model = os.getenv("DEFAULT_MLX_MODEL", "gemma4")
 MLX_URL = os.getenv("MLX_URL", "http://localhost:8800")
 
+PROJECTS_DIR = os.getenv("PROJECTS_DIR", os.path.join(os.path.expanduser("~"), "projects"))
+
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 
 SAVE_MEMORY_PROMPT = (
@@ -72,6 +74,43 @@ SAVE_MEMORY_PROMPT = (
     "Write the summary to {filepath} using the Write tool. "
     "Use markdown format with clear headers. Be thorough but concise — "
     "this will be the only record of this conversation."
+)
+
+WRITE_BRIEF_PROMPT = (
+    "Based on this entire conversation, write a project brief that another AI "
+    "(OpenAI Codex) can use to build this project. The brief should include:\n\n"
+    "## Project Overview\n"
+    "What we're building and why.\n\n"
+    "## Tech Stack\n"
+    "Languages, frameworks, dependencies.\n\n"
+    "## Architecture\n"
+    "File structure, components, data flow.\n\n"
+    "## Requirements\n"
+    "Numbered list of everything that needs to be built, in implementation order.\n\n"
+    "## Design Decisions\n"
+    "Key decisions made during our discussion and why.\n\n"
+    "## Out of Scope\n"
+    "Things explicitly excluded or deferred.\n\n"
+    "Write this to {filepath} using the Write tool. "
+    "Be specific and actionable — the reader has zero context beyond this file. "
+    "Include code snippets, API shapes, or config examples where helpful."
+)
+
+BUILD_FROM_BRIEF_PROMPT = (
+    "Read the project brief at {filepath} and build everything it describes. "
+    "Follow the requirements in order. Create all files, write all code, "
+    "and make it runnable. If anything in the brief is ambiguous, make a "
+    "reasonable choice and note it. Work in the directory: {project_dir}"
+)
+
+REVIEW_BRIEF_PROMPT = (
+    "Read the project brief at {filepath}, then review all the code in "
+    "{project_dir} against it. Check:\n"
+    "1. Are all requirements from the brief implemented?\n"
+    "2. Are there bugs, security issues, or missing error handling?\n"
+    "3. Does the code match the architecture described?\n"
+    "4. What's missing or incomplete?\n\n"
+    "Give a clear pass/fail for each requirement, then list any issues found."
 )
 
 # --- Session Management ---
@@ -715,6 +754,10 @@ def handle_bot_command(content, channel):
             "\u2022 `use gpt5` / `use codex` / `use o3` \u2014 Codex models\n"
             "\u2022 `use gemma4` \u2014 local MLX models\n"
             "\u2022 `model` or `status` \u2014 show current config\n"
+            "\n**Project Handoff (Claude \u2192 Codex):**\n"
+            "\u2022 `brief <project>` \u2014 Claude writes a project brief from this conversation\n"
+            "\u2022 `build <project>` \u2014 build it with the current backend\n"
+            "\u2022 `review <project>` \u2014 Claude reviews the result\n"
             "\n**Sessions:**\n"
             "\u2022 **`save memory`** \u2014 save session summary before starting fresh\n"
             "\u2022 `new session` / `reset` / `fresh` \u2014 start new conversation\n"
@@ -722,7 +765,9 @@ def handle_bot_command(content, channel):
             "\n**Other:**\n"
             "\u2022 `in ~/path: do something` \u2014 run in a specific directory\n"
             "\u2022 `help` \u2014 this message\n\n"
-            "\U0001f4a1 **Workflow:** chat \u2192 `save memory` \u2192 `new session`"
+            "\U0001f4a1 **Workflows:**\n"
+            "Chat \u2192 `save memory` \u2192 `new session`\n"
+            "Chat \u2192 `brief myapp` \u2192 `build myapp` \u2192 `review myapp`"
         ), True
 
     return None, False
@@ -801,6 +846,87 @@ async def on_message(message):
         save_prompt = SAVE_MEMORY_PROMPT.format(filepath=filepath)
         await message.channel.send(f"\U0001f4be Saving session memory to `{filename}`...")
         await run_claude(save_prompt, message.channel)
+        return
+
+    # Handle "brief <project>" — Claude writes a handoff doc
+    lower_content = content.lower().strip()
+    if lower_content.startswith("brief "):
+        project_name = content[6:].strip()
+        if not project_name:
+            await message.channel.send("Usage: `brief <project-name>`")
+            return
+        session = sessions.get(str(message.channel.id))
+        if not session or session.get("message_count", 0) == 0:
+            await message.channel.send("Nothing to brief \u2014 have a conversation first, then I'll distill it.")
+            return
+        project_dir = os.path.join(PROJECTS_DIR, project_name)
+        os.makedirs(project_dir, exist_ok=True)
+        filepath = os.path.join(project_dir, "BRIEF.md")
+        brief_prompt = WRITE_BRIEF_PROMPT.format(filepath=filepath)
+        await message.channel.send(
+            f"\U0001f4dd Writing project brief to `{project_name}/BRIEF.md`..."
+        )
+        await run_claude(brief_prompt, message.channel)
+        await message.channel.send(
+            f"\u2705 Brief saved. Next steps:\n"
+            f"\u2022 `build {project_name}` \u2014 build it with the current backend\n"
+            f"\u2022 `review {project_name}` \u2014 have Claude review the result"
+        )
+        return
+
+    # Handle "build <project>" — build from brief using current backend
+    if lower_content.startswith("build "):
+        project_name = content[6:].strip()
+        if not project_name:
+            await message.channel.send("Usage: `build <project-name>`")
+            return
+        project_dir = os.path.join(PROJECTS_DIR, project_name)
+        filepath = os.path.join(project_dir, "BRIEF.md")
+        if not os.path.exists(filepath):
+            await message.channel.send(
+                f"\u274c No brief found at `{project_name}/BRIEF.md`.\n"
+                f"Run `brief {project_name}` first to create one."
+            )
+            return
+        backend_name = current_backend.capitalize()
+        await message.channel.send(
+            f"\U0001f6e0\ufe0f **{backend_name}** building `{project_name}` from brief..."
+        )
+        build_prompt = BUILD_FROM_BRIEF_PROMPT.format(
+            filepath=filepath, project_dir=project_dir
+        )
+        if current_backend == "codex":
+            await run_codex(build_prompt, message.channel, working_dir=project_dir)
+        elif current_backend == "mlx":
+            await run_mlx(build_prompt, message.channel, working_dir=project_dir)
+        else:
+            await run_claude(build_prompt, message.channel, working_dir=project_dir)
+        await message.channel.send(
+            f"\u2705 Build complete. Run `review {project_name}` to have Claude check the work."
+        )
+        return
+
+    # Handle "review <project>" — Claude reviews work against the brief
+    if lower_content.startswith("review "):
+        project_name = content[7:].strip()
+        if not project_name:
+            await message.channel.send("Usage: `review <project-name>`")
+            return
+        project_dir = os.path.join(PROJECTS_DIR, project_name)
+        filepath = os.path.join(project_dir, "BRIEF.md")
+        if not os.path.exists(filepath):
+            await message.channel.send(
+                f"\u274c No brief found at `{project_name}/BRIEF.md`.\n"
+                f"Run `brief {project_name}` first."
+            )
+            return
+        await message.channel.send(
+            f"\U0001f50d **Claude** reviewing `{project_name}` against the brief..."
+        )
+        review_prompt = REVIEW_BRIEF_PROMPT.format(
+            filepath=filepath, project_dir=project_dir
+        )
+        await run_claude(review_prompt, message.channel, working_dir=project_dir)
         return
 
     # Check for bot commands (only if no images)

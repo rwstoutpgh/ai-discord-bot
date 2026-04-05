@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Frylock — Multi-backend AI Discord bot.
+AI Discord Bot — Multi-backend AI Discord bot.
 
 Routes messages to Claude Code, OpenAI Codex, or local MLX models via CLI/API.
 Uses your existing subscriptions — no API keys needed for Claude or Codex.
@@ -26,7 +26,7 @@ BOT_TOKEN = os.environ["DISCORD_BOT_TOKEN"]
 ALLOWED_USERS = {int(uid) for uid in os.environ["ALLOWED_USER_IDS"].split(",")}
 MAX_MSG_LEN = int(os.getenv("MAX_MSG_LEN", "1900"))
 WORKING_DIR = os.getenv("WORKING_DIR", os.path.expanduser("~"))
-IMAGE_DIR = os.getenv("IMAGE_DIR", "/tmp/frylock-images")
+IMAGE_DIR = os.getenv("IMAGE_DIR", "/tmp/discord-bot-images")
 DATA_DIR = os.getenv("DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
 SESSIONS_FILE = os.path.join(DATA_DIR, "sessions.json")
 CODEX_SESSIONS_FILE = os.path.join(DATA_DIR, "codex_sessions.json")
@@ -591,7 +591,7 @@ def handle_bot_command(content, channel):
         mlx_list = ', '.join(f'`{m}`' for m in MLX_MODELS)
 
         return (
-            f"\U0001f35f **Frylock Status**\n"
+            f"\U0001f35f **AI Discord Bot Status**\n"
             f"\u2022 Backend: **{current_backend}**\n"
             f"\u2022 Model: {active_model}\n"
             f"\u2022 Claude session: {claude_info}\n"
@@ -706,7 +706,7 @@ def handle_bot_command(content, channel):
 
     if lower == "help":
         return (
-            "\U0001f35f **Frylock \u2014 Commands**\n"
+            "\U0001f35f **AI Discord Bot \u2014 Commands**\n"
             "\u2022 Just message me and I'll route it to the active AI backend\n"
             "\u2022 Attach screenshots/images and I'll analyze them\n"
             "\n**Backends & Models:**\n"
@@ -736,7 +736,7 @@ def handle_bot_command(content, channel):
 async def on_ready():
     load_sessions()
     os.makedirs(SESSION_LOGS_DIR, exist_ok=True)
-    print(f"\U0001f35f Frylock online as {client.user}")
+    print(f"\U0001f35f AI Discord Bot online as {client.user}")
     print(f"   Claude binary: {CLAUDE_BIN}")
     print(f"   Backend: {current_backend}")
     print(f"   Claude model: {current_model} ({CLAUDE_MODELS[current_model]})")
@@ -837,7 +837,7 @@ async def on_message(message):
 
 
 def handle_signal(sig, frame):
-    print(f"\n\U0001f35f Frylock shutting down...")
+    print(f"\n\U0001f35f AI Discord Bot shutting down...")
     save_sessions()
     asyncio.get_event_loop().run_until_complete(client.close())
     sys.exit(0)
@@ -849,5 +849,5 @@ signal.signal(signal.SIGINT, handle_signal)
 if __name__ == "__main__":
     os.makedirs(IMAGE_DIR, exist_ok=True)
     load_sessions()
-    print("\U0001f35f Starting Frylock...")
+    print("\U0001f35f Starting AI Discord Bot...")
     client.run(BOT_TOKEN)

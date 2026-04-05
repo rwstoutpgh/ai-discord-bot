@@ -1,10 +1,10 @@
-# Frylock
+# AI Discord Bot
 
 A multi-backend AI Discord bot that routes messages to **Claude Code**, **OpenAI Codex**, or **local MLX models** — using your existing subscriptions. No API keys needed.
 
 ## Why?
 
-Most AI Discord bots require API keys and charge per token. Frylock uses the CLI tools that come with your Claude and ChatGPT subscriptions, so it costs nothing extra. It also supports local models via Apple MLX for fully offline, free inference.
+Most AI Discord bots require API keys and charge per token. AI Discord Bot uses the CLI tools that come with your Claude and ChatGPT subscriptions, so it costs nothing extra. It also supports local models via Apple MLX for fully offline, free inference.
 
 ## Backends
 
@@ -27,8 +27,8 @@ Most AI Discord bots require API keys and charge per token. Frylock uses the CLI
 ### 2. Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/frylock.git
-cd frylock
+git clone https://github.com/YOUR_USERNAME/ai-discord-bot.git
+cd ai-discord-bot
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -74,7 +74,7 @@ python bot.py
 
 Or with pm2 for auto-restart:
 ```bash
-pm2 start bot.py --name frylock --interpreter python3
+pm2 start bot.py --name ai-discord-bot --interpreter python3
 pm2 save
 ```
 
@@ -112,7 +112,7 @@ Attach images to your message — Claude analyzes them via its Read tool, Codex 
 ```
 Discord DM/Channel
         |
-    Frylock Bot (bot.py)
+    AI Discord Bot Bot (bot.py)
         |
    ┌────┼────────────┐
    |    |             |

@@ -134,7 +134,7 @@ Attach images to your message — Claude analyzes them via its Read tool, Codex 
 ```
 Discord DM/Channel
         |
-    AI Discord Bot Bot (bot.py)
+    AI Discord Bot (bot.py)
         |
    ┌────┼────────────┐
    |    |             |
@@ -146,6 +146,26 @@ Claude  Codex    MLX Server
 ```
 
 Single Python file. No framework. Just discord.py + subprocess calls to CLI tools + HTTP to local MLX server.
+
+## Error Handling
+
+The bot handles failures gracefully and reports errors back to Discord:
+
+- **CLI not installed**: If `claude` or `codex` isn't found in PATH, the subprocess will fail and the bot sends the error message to the channel. Install the missing CLI and try again.
+- **Subscription expired / auth issues**: The CLI tools will return an error about authentication. You'll see the stderr output in Discord. Run `claude login` or `codex login` on the host machine to re-authenticate.
+- **MLX server not running**: If the MLX backend is selected but the server isn't running on the configured port, you'll get a connection error in Discord. Start it with `pm2 start mlx-server` or `./start-mlx.sh`.
+- **Timeouts**: All backends have a 10-minute timeout (5 minutes for MLX). If a task takes longer, the process is killed and the bot reports a timeout.
+- **No fallback between backends**: If one backend fails, the bot does not automatically try another. Switch manually with `use claude` / `use codex`.
+
+## Security
+
+This bot runs AI agents with **full access to your machine** — file read/write, bash commands, network access. This is by design (it's the whole point), but understand the implications:
+
+- **Allowed users only**: Only Discord user IDs listed in `ALLOWED_USER_IDS` can interact with the bot. Everyone else is silently ignored.
+- **No input sanitization on prompts**: Prompts are passed directly to CLI tools. The CLI tools themselves handle sandboxing and safety — the bot does not add an additional layer.
+- **Directory override (`in ~/path:`)**: This validates that the path exists via `os.path.isdir()` before using it, but does not restrict which directories are accessible. The AI agent already has full filesystem access regardless of the working directory.
+- **Run on a trusted network**: This bot is designed to run on your own machine, accessed via your own Discord server. Do not add untrusted users to `ALLOWED_USER_IDS`.
+- **Bot token**: Keep your `.env` file secure. Anyone with the bot token can impersonate the bot (though they still can't trigger AI commands without being in `ALLOWED_USER_IDS`).
 
 ## Requirements
 

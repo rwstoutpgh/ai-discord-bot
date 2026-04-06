@@ -56,6 +56,10 @@ npm install -g @openai/codex
 codex login
 ```
 
+> **Note on Codex + Claude Code MCP integration:** OpenAI provides a Codex MCP server (`codex mcp-server`) that theoretically lets Claude Code call Codex as a tool. In practice, the MCP server is unreliable — simple prompts timeout after 5+ minutes and model availability errors are unclear. **Use the direct CLI approach instead** (`codex exec "prompt"`) — it's fast, reliable, and already how this bot works. The MCP server adds a middleman that breaks more than it helps.
+
+> **Model availability on ChatGPT Plus ($20/mo):** The default `gpt-5.3-codex` model works. The `gpt-5-3-codex` and `gpt-5-3.1-codex-max` API-tier model IDs do **not** work on ChatGPT accounts — you'll get `"model is not supported when using Codex with a ChatGPT account"`. Stick with the default model that `codex` auto-selects.
+
 **MLX** (optional, Apple Silicon only):
 ```bash
 pip install mlx-vlm

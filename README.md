@@ -43,31 +43,81 @@ cp .env.example .env
 
 ### 4. Install AI CLIs
 
-**Claude Code** (requires Claude Max or Pro subscription):
+You need at least one backend installed. Each one connects to your existing subscription — no API keys, no per-token billing.
+
+#### Claude Code (requires Claude Max or Pro subscription)
+
 ```bash
-# Install via Claude Desktop app or:
+# Install Node.js first if you don't have it
+# macOS: brew install node
+# Linux: https://nodejs.org/
+
+# Install Claude Code globally
 npm install -g @anthropic-ai/claude-code
+
+# Authenticate — this opens a browser window to log in with your Anthropic account
 claude login
+
+# Verify it works
+claude --version
+claude -p "say hello"
 ```
 
-**OpenAI Codex** (requires ChatGPT Pro or Plus subscription):
+After `claude login`, your session token is stored locally. The bot calls `claude` via subprocess — as long as the CLI works in your terminal, it works in the bot.
+
+**Troubleshooting:**
+- If `claude` isn't found after install, make sure your npm global bin is in your PATH (`npm bin -g`)
+- If auth expires, run `claude login` again on the host machine
+- Claude Code requires an active Claude Max ($100/mo) or Pro ($20/mo) subscription with CLI access enabled
+
+#### OpenAI Codex (requires ChatGPT Pro or Plus subscription)
+
 ```bash
+# Install Codex CLI globally
 npm install -g @openai/codex
+
+# Authenticate — opens a browser to log in with your OpenAI/ChatGPT account
 codex login
+
+# Verify it works
+codex exec "say hello"
 ```
 
-> **Note on Codex + Claude Code MCP integration:** OpenAI provides a Codex MCP server (`codex mcp-server`) that theoretically lets Claude Code call Codex as a tool. In practice, the MCP server is unreliable — simple prompts timeout after 5+ minutes and model availability errors are unclear. **Use the direct CLI approach instead** (`codex exec "prompt"`) — it's fast, reliable, and already how this bot works. The MCP server adds a middleman that breaks more than it helps.
+After `codex login`, your auth is stored locally. The bot uses `codex exec` (non-interactive mode) to run prompts and get responses.
 
-> **Model availability on ChatGPT Plus ($20/mo):** The default `gpt-5.3-codex` model works. The `gpt-5-3-codex` and `gpt-5-3.1-codex-max` API-tier model IDs do **not** work on ChatGPT accounts — you'll get `"model is not supported when using Codex with a ChatGPT account"`. Stick with the default model that `codex` auto-selects.
+**Important — model availability on ChatGPT Plus ($20/mo):**
+- The default model (`gpt-5.3-codex`) works out of the box — this is the code-specialized model
+- API-tier model IDs like `gpt-5-3-codex` and `gpt-5-3.1-codex-max` do **not** work on ChatGPT accounts — you'll get `"model is not supported when using Codex with a ChatGPT account"`
+- Just use the default — don't pass a custom model flag and it picks `gpt-5.3-codex` automatically
 
-**MLX** (optional, Apple Silicon only):
+**Important — skip the MCP server:**
+OpenAI provides a Codex MCP server (`codex mcp-server`) that theoretically lets other AI tools call Codex as a tool. In practice, it's unreliable — simple prompts timeout after 5+ minutes and error messages are unclear. This bot uses the direct CLI approach (`codex exec`) instead, which is fast and reliable. Don't bother with the MCP server.
+
+**Troubleshooting:**
+- If `codex` isn't found, check your PATH (`npm bin -g`)
+- If auth expires, run `codex login` again on the host machine
+- Codex needs to run inside a git repository — the bot's working directory must be a git repo (or use the `in ~/path:` command to point at one)
+
+#### MLX (optional, Apple Silicon only)
+
+For fully offline, free local inference on Mac with Apple Silicon:
+
 ```bash
+# Install mlx-vlm
 pip install mlx-vlm
-# Download a model:
+
+# Download a model (this is ~15GB for the 26B model)
 huggingface-cli download mlx-community/gemma-4-26b-a4b-it-4bit
-# Start the server:
+
+# Start the MLX server
 ./start-mlx.sh
+# Or with pm2:
+pm2 start start-mlx.sh --name mlx-server
 ```
+
+The MLX server runs on `localhost:8800` by default. The bot sends HTTP requests to it. No subscription needed — runs entirely on your GPU.
+
+**Note:** Large models (26B+) need significant RAM. If you're running other services on the same machine, consider a smaller model or monitor memory usage.
 
 ### 5. Run
 
